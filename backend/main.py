@@ -4,7 +4,7 @@ from datetime import datetime
 from loguru import logger
 from pathlib import Path
 from api import EHentaiAPI
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from ere import search_gallery, test
 import uvicorn
@@ -28,12 +28,16 @@ api = EHentaiAPI(cookies, None)
 async def test():
     return await api.test_fastapi()
 
-@app.get("/s/{query}?{page}")
-# async def search(query: str):
-#     return await search_gallery(query)
-async def search(query: str, page: int):
+@app.get("/s/{query}")
+async def search(
+    query: str,
+    page: int | None = Query(None, description="页码，从0开始"),
+    category: str | None = Query(None, description="分类筛选"),
+    min_rating: int | None = Query(None, description="最低评分")
+):
     await api.initialize()
-    return await api.search(query)
+    logger.debug(f"search: {query}, {page}, {category}, {min_rating}")
+    return await api.search(query, page, category, min_rating)
 
 
 # @app.get("/g/{url:path}")

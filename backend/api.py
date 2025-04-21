@@ -190,6 +190,7 @@ class EHentaiAPI:
         Returns:
             SearchResult: 搜索结果
         """
+        logger.debug(f"search: {query}, {page}, {category}, {min_rating}")
         if category:
             category_id = self.category_to_id(category)
             search_url = f"{self.url}/?f_cats={category_id}"
