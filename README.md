@@ -12,6 +12,8 @@ API 默认端口：8000
 uv sync
 cd backend
 uvicorn main:app --reload
+# 如果在服务器上请添加如下参数
+uvicorn main:app --reload --host 0.0.0.0
 ```
 #### 前端安装
 
@@ -31,4 +33,8 @@ pnpm run dev
 [cookies]
 ipb_member_id = 
 ipb_pass_hash = "xxx"
+
+[proxy]
+proxy = "http://127.0.0.1:7890"
+
 ```

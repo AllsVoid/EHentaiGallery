@@ -1,13 +1,13 @@
-import httpx
 import asyncio
-import tomllib
-from loguru import logger
-from dataclasses import dataclass
-import re
 import json
-import chardet
-from tenacity import retry, stop_after_attempt, wait_exponential
+import re
+import tomllib
+from dataclasses import dataclass
+
+import httpx
 from bs4 import BeautifulSoup
+from loguru import logger
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 EH_CATEGORY = {
     # 同人志
@@ -129,6 +129,10 @@ class EHentaiAPI:
         else:
             logger.debug("没有 Cookie")
 
+    def _get_verify_setting(self) -> bool:
+        """根据proxy设置确定verify值"""
+        return False if self.proxy else True
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=3),
@@ -138,7 +142,10 @@ class EHentaiAPI:
         """检查是否具有 exhentai 访问权限"""
         try:
             async with httpx.AsyncClient(
-                proxy=self.proxy, timeout=30.0, verify=True, follow_redirects=True
+                proxy=self.proxy,
+                timeout=30.0,
+                verify=self._get_verify_setting(),
+                follow_redirects=True,
             ) as client:
                 res = await client.get(
                     self.exhentai_url, headers=self.headers, follow_redirects=True
@@ -208,7 +215,10 @@ class EHentaiAPI:
             logger.debug(f"search_url: {search_url}")
 
             async with httpx.AsyncClient(
-                proxy=self.proxy, timeout=30.0, verify=True, follow_redirects=True
+                proxy=self.proxy,
+                timeout=30.0,
+                verify=self._get_verify_setting(),
+                follow_redirects=True,
             ) as client:
                 res = await client.get(search_url, headers=self.headers)
                 if res.status_code != 200:
@@ -287,7 +297,7 @@ class EHentaiAPI:
     async def get_gallery_info(self, url: str) -> GalleryInfo:
         """
         从 URL 中获取画廊信息
-        
+
         Args:
             url: (单个)画廊URL
 
@@ -307,7 +317,10 @@ class EHentaiAPI:
             params = {"method": "gdata", "gidlist": [[int(gid), token]], "namespace": 1}
 
             async with httpx.AsyncClient(
-                proxy=self.proxy, timeout=30.0, verify=True, follow_redirects=True
+                proxy=self.proxy,
+                timeout=30.0,
+                verify=self._get_verify_setting(),
+                follow_redirects=True,
             ) as client:
                 res = await client.post(
                     f"{self.url}/api.php", headers=self.headers, json=params
@@ -366,10 +379,18 @@ class EHentaiAPI:
 
 
 async def main():
-    with open("config.toml", "rb") as f:
-        cookies = tomllib.load(f)
-    # proxy = "http://192.168.5.197:18866"
-    api = EHentaiAPI(cookies, None)
+    # 读取配置文件
+    try:
+        with open("config.toml", "rb") as f:
+            config = tomllib.load(f)
+    except FileNotFoundError:
+        logger.error("配置文件不存在, 请先创建 config.toml 文件")
+        return
+
+    cookies = config["cookies"]
+    proxy = config.get("proxy", None)
+
+    api = EHentaiAPI(cookies, proxy)
     await api.initialize()
     # result = await api.get_gallery_info("https://exhentai.org/g/3310647/d0c337ea6e")
     # logger.info(result.title)
