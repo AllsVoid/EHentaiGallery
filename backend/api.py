@@ -133,6 +133,63 @@ class EHentaiAPI:
         """根据proxy设置确定verify值"""
         return False if self.proxy else True
 
+    def parse_search_response(self, res: httpx.Response) -> list[SearchResult]:
+        """解析搜索响应"""
+        soup = BeautifulSoup(res.text, "html.parser")
+        galleries = []
+        gallery_cells = soup.find_all("td", class_="gl3c")
+        for cell in gallery_cells:
+            link = cell.find("a")
+            if not link:
+                continue
+
+            href = link.get("href", "")
+            if not href:
+                continue
+
+            match = re.match(
+                r"https://(?:e-)?(?:ex)?hentai\.org/g/(\d+)/([a-f0-9]+)/", href
+            )
+            if not match:
+                continue
+            gid, token = match.groups()
+            glink = cell.find("div", class_="glink")
+            title = glink.text if glink else ""
+            thumb_row = cell.parent
+            thumb_div = thumb_row.find("div", class_="glthumb")
+            if thumb_div:
+                thumb_img = thumb_div.find("img")
+                if thumb_img:
+                    # 优先使用 data-src，如果没有则使用 src
+                    thumb_url = thumb_img.get("data-src", "") or thumb_img.get(
+                        "src", ""
+                    )
+                else:
+                    thumb_url = ""
+            else:
+                thumb_url = ""
+                # 获取种子链接
+            torrent_url = ""
+            torrent_cell = thumb_row.find("td", class_="gl2c")
+            if torrent_cell:
+                torrent_link = torrent_cell.find(
+                    "a", href=lambda x: x and "gallerytorrents.php" in x
+                )
+                if torrent_link:
+                    torrent_url = torrent_link["href"]
+
+            galleries.append(
+                SearchResult(
+                    gid=gid,
+                    token=token,
+                    title=title,
+                    thumb=thumb_url,
+                    torrent=torrent_url,
+                )
+            )
+            logger.info(f"找到 {len(galleries)} 个画廊")
+        return galleries
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=3),
@@ -229,61 +286,7 @@ class EHentaiAPI:
                 with open("search_response.html", "w", encoding="utf-8") as f:
                     f.write(res.text)
 
-                soup = BeautifulSoup(res.text, "html.parser")
-                galleries = []
-
-                gallery_cells = soup.find_all("td", class_="gl3c")
-                for cell in gallery_cells:
-                    link = cell.find("a")
-                    if not link:
-                        continue
-
-                    href = link.get("href", "")
-                    if not href:
-                        continue
-
-                    match = re.match(
-                        r"https://(?:e-)?(?:ex)?hentai\.org/g/(\d+)/([a-f0-9]+)/", href
-                    )
-                    if not match:
-                        continue
-                    gid, token = match.groups()
-                    glink = cell.find("div", class_="glink")
-                    title = glink.text if glink else ""
-                    thumb_row = cell.parent
-                    thumb_div = thumb_row.find("div", class_="glthumb")
-                    if thumb_div:
-                        thumb_img = thumb_div.find("img")
-                        if thumb_img:
-                            # 优先使用 data-src，如果没有则使用 src
-                            thumb_url = thumb_img.get("data-src", "") or thumb_img.get(
-                                "src", ""
-                            )
-                        else:
-                            thumb_url = ""
-                    else:
-                        thumb_url = ""
-                        # 获取种子链接
-                    torrent_url = ""
-                    torrent_cell = thumb_row.find("td", class_="gl2c")
-                    if torrent_cell:
-                        torrent_link = torrent_cell.find(
-                            "a", href=lambda x: x and "gallerytorrents.php" in x
-                        )
-                        if torrent_link:
-                            torrent_url = torrent_link["href"]
-
-                    galleries.append(
-                        SearchResult(
-                            gid=gid,
-                            token=token,
-                            title=title,
-                            thumb=thumb_url,
-                            torrent=torrent_url,
-                        )
-                    )
-                    logger.info(f"找到 {len(galleries)} 个画廊")
-                return galleries
+            return self.parse_search_response(res)
 
         except Exception as e:
             logger.error(f"搜索失败: {e}")
@@ -374,8 +377,36 @@ class EHentaiAPI:
         wait=wait_exponential(multiplier=1, min=1, max=3),
         reraise=True,
     )
-    async def get_gallery_images(self, url: str):
+    async def preview_gallery_images(self, url: str):
         pass
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=3),
+        reraise=True,
+    )
+    async def random_gallery(self):
+        """
+        随机画廊
+        """
+        logger.debug("随机画廊")
+        try:
+            request_url = f"{self.url}/tag/random"
+            async with httpx.AsyncClient(
+                proxy=self.proxy,
+                timeout=30.0,
+                verify=self._get_verify_setting(),
+                follow_redirects=True,
+            ) as client:
+                res = await client.get(request_url, headers=self.headers)
+                if res.status_code != 200:
+                    logger.error(f"随机画廊请求失败，状态码: {res.status_code}")
+                    return None
+                return self.parse_search_response(res)
+
+        except Exception as e:
+            logger.error(f"随机画廊请求失败: {e}")
+            raise
 
 
 async def main():

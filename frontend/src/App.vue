@@ -117,7 +117,8 @@
                     :placeholder="isUrl ? '输入画廊链接...' : '输入关键词搜索...'" 
                     type="text"
                 >
-                <button @click="handleSearch">{{ isUrl ? '获取详情' : '搜索' }}</button>
+                <button id="search-button" @click="handleSearch">{{ isUrl ? '获取详情' : '搜索' }}</button>
+                <button id="random-button" @click="handleRandomGallery">魔法骰子~</button>
             </div>
         </header>
 
@@ -271,6 +272,19 @@ export default {
             }
         }
 
+        const handleRandomGallery = async () => {
+            loading.value = true
+            error.value = ''
+            searchResults.value = []
+            try {
+                const response = await axios.get(`${API_BASE_URL}/random`)
+                searchResults.value = response.data
+            } catch (err) {
+                error.value = '随机画廊出错，请稍后重试'
+                console.error('Random gallery error:', err)
+            }
+        }
+
         const showGalleryDetails = async (item) => {
             loading.value = true
             error.value = ''
@@ -308,6 +322,7 @@ export default {
             minRating,
             handleCategory,
             handleSearch,
+            handleRandomGallery,
             showGalleryDetails,
             closeModal,
             formatDate
@@ -469,6 +484,14 @@ button {
 
 button:hover {
     background-color: #45a049;
+}
+
+#search-button {
+    width: 80px;
+}
+
+#random-button {
+    width: 120px;
 }
 
 .loading {

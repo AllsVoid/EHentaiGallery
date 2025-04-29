@@ -50,5 +50,11 @@ async def get_gallery(url: str):
     return await api.get_gallery_info(f"{url}")
 
 
+@app.get("/random")
+async def random_gallery():
+    await api.initialize()
+    return await api.random_gallery()
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
