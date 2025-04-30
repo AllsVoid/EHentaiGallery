@@ -385,13 +385,21 @@ class EHentaiAPI:
         wait=wait_exponential(multiplier=1, min=1, max=3),
         reraise=True,
     )
-    async def random_gallery(self):
+    async def choice_gallery(self, choice: str = "random"):
         """
         随机画廊
         """
         logger.debug("随机画廊")
+        case_map = {
+            "random": "tag/random",
+            "topt": "toplist.php?tl=11",
+            "topy": "toplist.php?tl=12",
+            "topm": "toplist.php?tl=13",
+            "topd": "toplist.php?tl=15",
+        }
         try:
-            request_url = f"{self.url}/tag/random"
+            request_url = f"{self.ehentai_url}/{case_map[choice]}"
+            logger.debug(f"request_url: {request_url}")
             async with httpx.AsyncClient(
                 proxy=self.proxy,
                 timeout=30.0,

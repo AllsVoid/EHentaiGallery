@@ -118,7 +118,13 @@
                     type="text"
                 >
                 <button id="search-button" @click="handleSearch">{{ isUrl ? '获取详情' : '搜索' }}</button>
-                <button id="random-button" @click="handleRandomGallery">魔法骰子~</button>
+            </div>
+            <div class="choice-box">
+                <button id="random-button" @click="handleRandomGallery('random')">魔法骰子~</button>
+                <button id="top_total-button" @click="handleRandomGallery('topt')">总排行</button>
+                <button id="top_year-button" @click="handleRandomGallery('topy')">年排行</button>
+                <button id="top_month-button" @click="handleRandomGallery('topm')">月排行</button>
+                <button id="top_day-button" @click="handleRandomGallery('topd')">日排行</button>
             </div>
         </header>
 
@@ -272,16 +278,16 @@ export default {
             }
         }
 
-        const handleRandomGallery = async () => {
+        const handleRandomGallery = async (choice = 'random') => {
             loading.value = true
             error.value = ''
             searchResults.value = []
             try {
-                const response = await axios.get(`${API_BASE_URL}/random`)
+                const response = await axios.get(`${API_BASE_URL}/choice/${choice}`)
                 searchResults.value = response.data
             } catch (err) {
                 error.value = '随机画廊出错，请稍后重试'
-                console.error('Random gallery error:', err)
+                console.error(`${choice} gallery error:`, err)
             }
         }
 
@@ -370,7 +376,7 @@ table.category-table {
     color: white;
     transition: all 0.2s;
     position: relative;
-    padding-right: 25px;
+    /* padding-right: 25px; */
 }
 
 .checkmark {
@@ -490,8 +496,18 @@ button:hover {
     width: 80px;
 }
 
-#random-button {
-    width: 120px;
+.choice-box {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    align-items: center;
+    padding-top: 20px;
+}
+
+.choice-box button {
+    width: 90px;
+    padding: 5px;
+    background-color: #82B1FF;
 }
 
 .loading {

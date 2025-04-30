@@ -50,10 +50,10 @@ async def get_gallery(url: str):
     return await api.get_gallery_info(f"{url}")
 
 
-@app.get("/random")
-async def random_gallery():
+@app.get("/choice/{choice}")
+async def choice_gallery(choice: str = "random"):
     await api.initialize()
-    return await api.random_gallery()
+    return await api.choice_gallery(choice)
 
 
 if __name__ == "__main__":
